@@ -8,6 +8,16 @@
 #include <pybind11/numpy.h>
 namespace py = pybind11;
 #endif
+
+#if defined(USE_BASELINE) || defined(USE_FORKJOIN)
+#include <functional>
+#include <taskparts/benchmark.hpp>
+#elif defined(USE_OPENMP)
+#include "utility.hpp"
+#elif defined(USE_HB_COMPILER) || defined(USE_HB_MANUAL)
+#include "loop_handler.hpp"
+#endif
+
 Graph edges;
 typedef struct struct_delta_out_degree { 
   double delta;
@@ -109,6 +119,235 @@ void operator() (NodeID v)
     array_of_struct_delta_out_degree[v].delta  = (((float) 1)  / builtin_getVertices(edges) );
   };
 };
+
+#if defined(USE_BASELINE) || defined(TEST_CORRECTNESS)
+void PRDelta_baseline(Graph &g, int n) {
+  // VertexSubset<int> *  frontier = new VertexSubset<int> ( builtin_getVertices(edges)  , n);
+  // ligra::parallel_for_lambda((int)0, (int)builtin_getVertices(edges) , [&] (int vertexsetapply_iter) {
+  //   reset()(vertexsetapply_iter);
+  // });;
+  // for ( int i = (1) ; i < (11) ; i++ )
+  // {
+  //   edgeset_apply_pull_parallel_from_vertexset5(edges, frontier, updateEdge()); 
+  //   VertexSubset<int> *  output ;
+  //   if ((i) == ((1) ))
+  //     { 
+  //     output = builtin_const_vertexset_filter <updateVertexFirstRound>(updateVertexFirstRound(), builtin_getVertices(edges) );
+  //     } 
+  //   else
+  //     { 
+  //     output = builtin_const_vertexset_filter <updateVertex>(updateVertex(), builtin_getVertices(edges) );
+
+  //     } 
+  //   deleteObject(frontier) ;
+  //   frontier = output;
+  // }
+  // deleteObject(frontier) ;
+
+  VertexSubset<int> *  frontier = new VertexSubset<int> ( builtin_getVertices(edges)  , n);
+  for (uint64_t i = 0; i < builtin_getVertices(edges); i++) {
+    reset()(i);
+  }
+
+  for ( int i = (1) ; i < (11) ; i++ )
+  {
+    frontier->toDense();
+    for (uint64_t d = 0; d < g.num_nodes(); d++) {
+      for (uint64_t i = g.get_in_neighbors_begin_index_(d); i < g.get_in_neighbors_end_index_(d); i++) {
+        if (frontier->bool_map_[g.get_in_neighbors_()[i]] ) { 
+          updateEdge()( g.get_in_neighbors_()[i], d );
+        }
+      }
+    };
+
+    VertexSubset<int> *  output ;
+    if ((i) == ((1) ))
+      { 
+      output = builtin_const_vertexset_filter <updateVertexFirstRound>(updateVertexFirstRound(), builtin_getVertices(edges) );
+      } 
+    else
+      { 
+      output = new VertexSubset<NodeID>( builtin_getVertices(edges), 0);
+      bool * next0 = newA(bool, builtin_getVertices(edges));
+      for(uint64_t v = 0; v < builtin_getVertices(edges); v++) {
+        next0[v] = 0;
+        if (updateVertex()(v))
+            next0[v] = 1;
+      }
+      output->num_vertices_ = sequence::sum(next0, builtin_getVertices(edges));
+      output->bool_map_ = next0;
+      output->is_dense = true;
+      } 
+    deleteObject(frontier) ;
+    frontier = output;
+  }
+  deleteObject(frontier) ;
+}
+
+#if defined(TEST_CORRECTNESS)
+void test_correctness() {
+  // save previous output
+  double  * __restrict cur_rank_output = new double [ builtin_getVertices(edges) ];
+  for (uint64_t i = 0; i < builtin_getVertices(edges); i++) {
+    cur_rank_output[i] = cur_rank[i];
+  }
+  ligra::parallel_for_lambda((int)0, (int)builtin_getVertices(edges) , [&] (int vertexsetapply_iter) {
+    reset()(vertexsetapply_iter);
+  });;
+
+  // run serial and generate output
+  PRDelta_baseline(edges, builtin_getVertices(edges));
+
+  // compare previous ourput with serial-version output
+  uint64_t num_diffs = 0;
+  double epsilon = 0.01;
+  for (uint64_t i = 0; i < builtin_getVertices(edges); i++) {
+    auto diff = std::abs(cur_rank_output[i] - cur_rank[i]);
+    if (diff > epsilon) {
+      std::cout << "diff=" << diff << " cur_rank_output[i]=" << cur_rank_output[i] << " cur_rank[i]=" << cur_rank[i] << " at i=" << i << std::endl;
+      num_diffs++;
+    }
+  }
+  if (num_diffs > 0) {
+    printf("\033[0;31mINCORRECT!\033[0m");
+    printf("  num_diffs = %lu\n", num_diffs);
+  } else {
+    printf("\033[0;32mCORRECT!\033[0m\n");
+  }
+}
+#endif
+#endif
+
+#if defined(USE_OPENMP)
+void PRDelta_openmp(Graph &g, int n) {
+  VertexSubset<int> *  frontier = new VertexSubset<int> ( builtin_getVertices(edges)  , n);
+  #pragma omp parallel for schedule(static)
+  for (uint64_t i = 0; i < builtin_getVertices(edges); i++) {
+    reset()(i);
+  }
+
+  for ( int i = (1) ; i < (11) ; i++ )
+  {
+    frontier->toDense();
+    #if defined(OMP_SCHEDULE_STATIC)
+      #pragma omp parallel for schedule(static)
+    #elif defined(OMP_SCHEDULE_DYNAMIC)
+      #pragma omp parallel for schedule(dynamic)
+    #elif defined(OMP_SCHEDULE_GUIDED)
+      #pragma omp parallel for schedule(guided)
+    #endif
+    for (uint64_t d = 0; d < g.num_nodes(); d++) {
+      for (uint64_t i = g.get_in_neighbors_begin_index_(d); i < g.get_in_neighbors_end_index_(d); i++) {
+        if (frontier->bool_map_[g.get_in_neighbors_()[i]] ) { 
+          updateEdge()( g.get_in_neighbors_()[i], d );
+        }
+      }
+    };
+
+    VertexSubset<int> *  output ;
+    if ((i) == ((1) ))
+      { 
+      output = builtin_const_vertexset_filter <updateVertexFirstRound>(updateVertexFirstRound(), builtin_getVertices(edges) );
+      } 
+    else
+      { 
+      output = new VertexSubset<NodeID>( builtin_getVertices(edges), 0);
+      bool * next0 = newA(bool, builtin_getVertices(edges));
+      #if defined(OMP_SCHEDULE_STATIC)
+        #pragma omp parallel for schedule(static)
+      #elif defined(OMP_SCHEDULE_DYNAMIC)
+        #pragma omp parallel for schedule(dynamic)
+      #elif defined(OMP_SCHEDULE_GUIDED)
+        #pragma omp parallel for schedule(guided)
+      #endif
+      for(uint64_t v = 0; v < builtin_getVertices(edges); v++) {
+        next0[v] = 0;
+        if (updateVertex()(v))
+            next0[v] = 1;
+      }
+      output->num_vertices_ = sequence::sum(next0, builtin_getVertices(edges));
+      output->bool_map_ = next0;
+      output->is_dense = true;
+      } 
+    deleteObject(frontier) ;
+    frontier = output;
+  }
+  deleteObject(frontier) ;
+}
+
+#elif defined(USE_HB_COMPILER)
+#if defined(RUN_HEARTBEAT)
+  bool run_heartbeat = true;
+#else
+  bool run_heartbeat = false;
+#endif
+
+void HEARTBEAT_loop0(uint64_t maxIter) {
+  for (uint64_t i = 0; i < maxIter; i++) {
+    reset()(i);
+  }
+}
+
+void HEARTBEAT_loop2(
+  uint64_t startIter,
+  uint64_t maxIter,
+  Graph &g,
+  VertexSubset<int> *frontier,
+  uint64_t d
+) {
+  for (uint64_t i = startIter; i < maxIter; i++) {
+    if (frontier->bool_map_[g.get_in_neighbors_()[i]] ) { 
+      updateEdge()( g.get_in_neighbors_()[i], d );
+    }
+  }
+}
+
+void HEARTBEAT_loop1(uint64_t maxIter, Graph &g, VertexSubset<int> *frontier) {
+  for (uint64_t d = 0; d < maxIter; d++) {
+    HEARTBEAT_loop2(g.get_in_neighbors_begin_index_(d), g.get_in_neighbors_end_index_(d), g, frontier, d);
+  };
+}
+
+void HEARTBEAT_loop3(uint64_t maxIter, bool *next0) {
+  for(uint64_t v = 0; v < maxIter; v++) {
+    next0[v] = 0;
+    if (updateVertex()(v))
+        next0[v] = 1;
+  }
+}
+
+void PRDelta_hbc(Graph &g, int n) {
+  VertexSubset<int> *  frontier = new VertexSubset<int> ( builtin_getVertices(edges)  , n);
+  HEARTBEAT_loop0(builtin_getVertices(edges));
+
+  for ( int i = (1) ; i < (11) ; i++ )
+  {
+    frontier->toDense();
+    HEARTBEAT_loop1(g.num_nodes(), edges, frontier);
+
+    VertexSubset<int> *  output ;
+    if ((i) == ((1) ))
+      { 
+      output = builtin_const_vertexset_filter <updateVertexFirstRound>(updateVertexFirstRound(), builtin_getVertices(edges) );
+      } 
+    else
+      { 
+      { 
+      output = new VertexSubset<NodeID>( builtin_getVertices(edges), 0);
+      bool * next0 = newA(bool, builtin_getVertices(edges));
+      HEARTBEAT_loop3(builtin_getVertices(edges), next0);
+      output->num_vertices_ = sequence::sum(next0, builtin_getVertices(edges));
+      output->bool_map_ = next0;
+      output->is_dense = true;
+      } 
+      } 
+    deleteObject(frontier) ;
+    frontier = output;
+  }
+  deleteObject(frontier) ;
+}
+#endif
+
 int main(int argc, char * argv[])
 {
   edges = builtin_loadEdgesFromFile ("USAroad.el") ;
@@ -133,37 +372,44 @@ int main(int argc, char * argv[])
     generated_vector_op_apply_func_4()(vertexsetapply_iter);
   });;
   int n = builtin_getVertices(edges) ;
-  for ( int trail = (0) ; trail < (10) ; trail++ )
-  {
-    startTimer() ;
-    VertexSubset<int> *  frontier = new VertexSubset<int> ( builtin_getVertices(edges)  , n);
-    ligra::parallel_for_lambda((int)0, (int)builtin_getVertices(edges) , [&] (int vertexsetapply_iter) {
-      reset()(vertexsetapply_iter);
-    });;
-    for ( int i = (1) ; i < (11) ; i++ )
-    {
-      edgeset_apply_pull_parallel_from_vertexset5(edges, frontier, updateEdge()); 
-      VertexSubset<int> *  output ;
-      if ((i) == ((1) ))
-       { 
-        output = builtin_const_vertexset_filter <updateVertexFirstRound>(updateVertexFirstRound(), builtin_getVertices(edges) );
-       } 
-      else
-       { 
-        output = builtin_const_vertexset_filter <updateVertex>(updateVertex(), builtin_getVertices(edges) );
+  // for ( int trail = (0) ; trail < (10) ; trail++ )
+  // {
+    // startTimer() ;
+// ####################
+#if defined(USE_BASELINE) || defined(USE_FORKJOIN)
+  taskparts::benchmark_nativeforkjoin([&] (auto sched) {
+#elif defined(USE_OPENMP)
+  utility::run([&] {
+#elif defined(USE_HB_COMPILER) || defined(USE_HB_MANUAL)
+  run_bench([&] {
+#endif
 
-       } 
-      deleteObject(frontier) ;
-      frontier = output;
-    }
-    deleteObject(frontier) ;
-    double elapsed_time = stopTimer() ;
-    std::cout << "elapsed time: "<< std::endl;
-    std::cout << elapsed_time<< std::endl;
-  }
+#if defined(USE_BASELINE)
+    PRDelta_baseline(edges, n);
+#elif defined(USE_OPENMP)
+    PRDelta_openmp(edges, n);
+#elif defined(USE_HB_COMPILER)
+    PRDelta_hbc(edges, n);
+#endif
+
+#if defined(TEST_CORRECTNESS)
+    test_correctness();
+#endif
+
+#if defined(USE_BASELINE) || defined(USE_FORKJOIN)
+  }, [&] (auto sched) {
+  }, [&] (auto sched) {
+  });
+#else
+  }, [&] {}, [&] {});
+#endif
+// ####################
+    // double elapsed_time = stopTimer() ;
+    // std::cout << "elapsed time: "<< std::endl;
+    // std::cout << elapsed_time<< std::endl;
+  // }
 };
 #ifdef GEN_PYBIND_WRAPPERS
 PYBIND11_MODULE(, m) {
 }
 #endif
-
