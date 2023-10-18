@@ -114,6 +114,9 @@ void operator() (NodeID v)
 
 #if defined(USE_BASELINE) || defined(TEST_CORRECTNESS)
 void PR_baseline(Graph &g) {
+  // ligra::parallel_for_lambda((int)0, (int)builtin_getVertices(edges) , [&] (int vertexsetapply_iter) {
+  //   reset()(vertexsetapply_iter);
+  // });;
   // for ( int i = (0) ; i < (20) ; i++ )
   // {
   //   ligra::parallel_for_lambda((int)0, (int)builtin_getVertices(edges) , [&] (int vertexsetapply_iter) {
@@ -124,6 +127,10 @@ void PR_baseline(Graph &g) {
   //     updateVertex()(vertexsetapply_iter);
   //   });;
   // }
+
+  for (uint64_t i = 0; i < builtin_getVertices(edges); i++) {
+    reset()(i);
+  }
   for ( int i = (0) ; i < (20) ; i++ )
   {
     for (uint64_t nodeID = 0; nodeID < builtin_getVertices(edges); nodeID++) {
@@ -162,7 +169,7 @@ void test_correctness() {
   for (uint64_t i = 0; i < builtin_getVertices(edges); i++) {
     auto diff = std::abs(old_rank_output[i] - old_rank[i]);
     if (diff > epsilon) {
-      printf("diff=%f old_rank_output[i]=%f old_rank[i]=%f at i=%lu\n", diff, old_rank_output[i], old_rank[i], i);
+      std::cout << "diff=" << diff << " old_rank_output[i]=" << old_rank_output[i] << " old_rank[i]=" << old_rank[i] << " at i=" << i << std::endl;
       num_diffs++;
     }
   }
@@ -178,6 +185,11 @@ void test_correctness() {
 
 #if defined(USE_OPENMP)
 void PR_openmp(Graph &g) {
+  #pragma omp parallel for schedule(static)
+  for (uint64_t i = 0; i < builtin_getVertices(edges); i++) {
+    reset()(i);
+  }
+
   for ( int i = (0) ; i < (20) ; i++ )
   {
     #pragma omp parallel for schedule(static)
@@ -213,12 +225,18 @@ void PR_openmp(Graph &g) {
 #endif
 
 void HEARTBEAT_loop0(uint64_t maxIter) {
+  for (uint64_t i = 0; i < maxIter; i++) {
+    reset()(i);
+  }
+}
+
+void HEARTBEAT_loop1(uint64_t maxIter) {
   for (uint64_t nodeID = 0; nodeID < maxIter; nodeID++) {
     computeContrib()(nodeID);
   }
 }
 
-void HEARTBEAT_loop2(
+void HEARTBEAT_loop3(
   uint64_t startIter,
   uint64_t maxIter,
   Graph &g,
@@ -229,24 +247,26 @@ void HEARTBEAT_loop2(
   }
 }
 
-void HEARTBEAT_loop1(Graph &g, uint64_t maxIter) {
+void HEARTBEAT_loop2(Graph &g, uint64_t maxIter) {
   for (uint64_t d = 0; d < maxIter; d++) {
-    HEARTBEAT_loop2(g.get_in_neighbors_begin_index_(d), g.get_in_neighbors_end_index_(d), g, d);
+    HEARTBEAT_loop3(g.get_in_neighbors_begin_index_(d), g.get_in_neighbors_end_index_(d), g, d);
   }
 }
 
-void HEARTBEAT_loop3(uint64_t maxIter) {
+void HEARTBEAT_loop4(uint64_t maxIter) {
   for (uint64_t nodeID = 0; nodeID < maxIter; nodeID++) {
     updateVertex()(nodeID);
   }
 }
 
 void PR_hbc(Graph &g) {
+  HEARTBEAT_loop0(builtin_getVertices(edges));
+
   for ( int i = (0) ; i < (20) ; i++ )
   {
-    HEARTBEAT_loop0(builtin_getVertices(edges));
-    HEARTBEAT_loop1(g, g.num_nodes());
-    HEARTBEAT_loop3(builtin_getVertices(edges));
+    HEARTBEAT_loop1(builtin_getVertices(edges));
+    HEARTBEAT_loop2(g, g.num_nodes());
+    HEARTBEAT_loop4(builtin_getVertices(edges));
   }
 }
 #endif
@@ -281,9 +301,6 @@ int main(int argc, char * argv[])
   // for ( int trail = (0) ; trail < (10) ; trail++ )
   // {
     // startTimer() ;
-    ligra::parallel_for_lambda((int)0, (int)builtin_getVertices(edges) , [&] (int vertexsetapply_iter) {
-      reset()(vertexsetapply_iter);
-    });;
 // ####################
 #if defined(USE_BASELINE) || defined(USE_FORKJOIN)
   taskparts::benchmark_nativeforkjoin([&] (auto sched) {
@@ -316,8 +333,8 @@ int main(int argc, char * argv[])
     // double elapsed_time = stopTimer() ;
     // std::cout << "elapsed time: "<< std::endl;
     // std::cout << elapsed_time<< std::endl;
-  }
-// };
+  // }
+};
 #ifdef GEN_PYBIND_WRAPPERS
 PYBIND11_MODULE(, m) {
 }
