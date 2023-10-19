@@ -185,14 +185,26 @@ void test_correctness() {
 
 #if defined(USE_OPENMP)
 void PR_openmp(Graph &g) {
-  #pragma omp parallel for schedule(static)
+  #if defined(OMP_SCHEDULE_STATIC)
+    #pragma omp parallel for schedule(static)
+  #elif defined(OMP_SCHEDULE_DYNAMIC)
+    #pragma omp parallel for schedule(dynamic)
+  #elif defined(OMP_SCHEDULE_GUIDED)
+    #pragma omp parallel for schedule(guided)
+  #endif
   for (uint64_t i = 0; i < builtin_getVertices(edges); i++) {
     reset()(i);
   }
 
   for ( int i = (0) ; i < (20) ; i++ )
   {
-    #pragma omp parallel for schedule(static)
+    #if defined(OMP_SCHEDULE_STATIC)
+      #pragma omp parallel for schedule(static)
+    #elif defined(OMP_SCHEDULE_DYNAMIC)
+      #pragma omp parallel for schedule(dynamic)
+    #elif defined(OMP_SCHEDULE_GUIDED)
+      #pragma omp parallel for schedule(guided)
+    #endif
     for (uint64_t nodeID = 0; nodeID < builtin_getVertices(edges); nodeID++) {
       computeContrib()(nodeID);
     }
@@ -210,7 +222,13 @@ void PR_openmp(Graph &g) {
       }
     }
 
-    #pragma omp parallel for schedule(static)
+    #if defined(OMP_SCHEDULE_STATIC)
+      #pragma omp parallel for schedule(static)
+    #elif defined(OMP_SCHEDULE_DYNAMIC)
+      #pragma omp parallel for schedule(dynamic)
+    #elif defined(OMP_SCHEDULE_GUIDED)
+      #pragma omp parallel for schedule(guided)
+    #endif
     for (uint64_t nodeID = 0; nodeID < builtin_getVertices(edges); nodeID++) {
       updateVertex()(nodeID);
     }
@@ -274,7 +292,7 @@ void PR_hbc(Graph &g) {
 
 int main(int argc, char * argv[])
 {
-  edges = builtin_loadEdgesFromFile ("USAroad.el") ;
+  edges = builtin_loadEdgesFromFile ( "Twitter.el" ) ;
   old_rank = new double [ builtin_getVertices(edges) ];
   new_rank = new double [ builtin_getVertices(edges) ];
   out_degree = new int [ builtin_getVertices(edges) ];

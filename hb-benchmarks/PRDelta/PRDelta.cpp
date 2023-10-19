@@ -163,7 +163,16 @@ void PRDelta_baseline(Graph &g, int n) {
     VertexSubset<int> *  output ;
     if ((i) == ((1) ))
       { 
-      output = builtin_const_vertexset_filter <updateVertexFirstRound>(updateVertexFirstRound(), builtin_getVertices(edges) );
+      output = new VertexSubset<NodeID>( builtin_getVertices(edges), 0);
+      bool * next0 = newA(bool, builtin_getVertices(edges));
+      for (uint64_t v = 0; v < builtin_getVertices(edges); v++) {
+        next0[v] = 0;
+        if (updateVertexFirstRound()(v))
+            next0[v] = 1;
+      }
+      output->num_vertices_ = sequence::sum(next0, builtin_getVertices(edges));
+      output->bool_map_ = next0;
+      output->is_dense = true;
       } 
     else
       { 
@@ -221,7 +230,13 @@ void test_correctness() {
 #if defined(USE_OPENMP)
 void PRDelta_openmp(Graph &g, int n) {
   VertexSubset<int> *  frontier = new VertexSubset<int> ( builtin_getVertices(edges)  , n);
-  #pragma omp parallel for schedule(static)
+  #if defined(OMP_SCHEDULE_STATIC)
+    #pragma omp parallel for schedule(static)
+  #elif defined(OMP_SCHEDULE_DYNAMIC)
+    #pragma omp parallel for schedule(dynamic)
+  #elif defined(OMP_SCHEDULE_GUIDED)
+    #pragma omp parallel for schedule(guided)
+  #endif
   for (uint64_t i = 0; i < builtin_getVertices(edges); i++) {
     reset()(i);
   }
@@ -247,7 +262,23 @@ void PRDelta_openmp(Graph &g, int n) {
     VertexSubset<int> *  output ;
     if ((i) == ((1) ))
       { 
-      output = builtin_const_vertexset_filter <updateVertexFirstRound>(updateVertexFirstRound(), builtin_getVertices(edges) );
+      output = new VertexSubset<NodeID>( builtin_getVertices(edges), 0);
+      bool * next0 = newA(bool, builtin_getVertices(edges));
+      #if defined(OMP_SCHEDULE_STATIC)
+        #pragma omp parallel for schedule(static)
+      #elif defined(OMP_SCHEDULE_DYNAMIC)
+        #pragma omp parallel for schedule(dynamic)
+      #elif defined(OMP_SCHEDULE_GUIDED)
+        #pragma omp parallel for schedule(guided)
+      #endif
+      for (uint64_t v = 0; v < builtin_getVertices(edges); v++) {
+        next0[v] = 0;
+        if (updateVertexFirstRound()(v))
+            next0[v] = 1;
+      }
+      output->num_vertices_ = sequence::sum(next0, builtin_getVertices(edges));
+      output->bool_map_ = next0;
+      output->is_dense = true;
       } 
     else
       { 
@@ -308,10 +339,18 @@ void HEARTBEAT_loop1(uint64_t maxIter, Graph &g, VertexSubset<int> *frontier) {
   };
 }
 
-void HEARTBEAT_loop3(uint64_t maxIter, bool *next0) {
+void HEARTBEAT_loop4(uint64_t maxIter, bool *next0) {
   for(uint64_t v = 0; v < maxIter; v++) {
     next0[v] = 0;
     if (updateVertex()(v))
+        next0[v] = 1;
+  }
+}
+
+void HEARTBEAT_loop3(uint64_t maxIter, bool *next0) {
+  for (uint64_t v = 0; v < maxIter; v++) {
+    next0[v] = 0;
+    if (updateVertexFirstRound()(v))
         next0[v] = 1;
   }
 }
@@ -328,14 +367,19 @@ void PRDelta_hbc(Graph &g, int n) {
     VertexSubset<int> *  output ;
     if ((i) == ((1) ))
       { 
-      output = builtin_const_vertexset_filter <updateVertexFirstRound>(updateVertexFirstRound(), builtin_getVertices(edges) );
+      output = new VertexSubset<NodeID>( builtin_getVertices(edges), 0);
+      bool * next0 = newA(bool, builtin_getVertices(edges));
+      HEARTBEAT_loop3(builtin_getVertices(edges), next0);
+      output->num_vertices_ = sequence::sum(next0, builtin_getVertices(edges));
+      output->bool_map_ = next0;
+      output->is_dense = true;
       } 
     else
       { 
       { 
       output = new VertexSubset<NodeID>( builtin_getVertices(edges), 0);
       bool * next0 = newA(bool, builtin_getVertices(edges));
-      HEARTBEAT_loop3(builtin_getVertices(edges), next0);
+      HEARTBEAT_loop4(builtin_getVertices(edges), next0);
       output->num_vertices_ = sequence::sum(next0, builtin_getVertices(edges));
       output->bool_map_ = next0;
       output->is_dense = true;
@@ -350,7 +394,7 @@ void PRDelta_hbc(Graph &g, int n) {
 
 int main(int argc, char * argv[])
 {
-  edges = builtin_loadEdgesFromFile ("USAroad.el") ;
+  edges = builtin_loadEdgesFromFile ( "Twitter.el" ) ;
   cur_rank = new double [ builtin_getVertices(edges) ];
   ngh_sum = new double [ builtin_getVertices(edges) ];
   array_of_struct_delta_out_degree = new struct_delta_out_degree [ builtin_getVertices(edges) ];
