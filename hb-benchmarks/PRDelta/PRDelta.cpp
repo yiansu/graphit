@@ -394,7 +394,7 @@ void PRDelta_hbc(Graph &g, int n) {
 
 int main(int argc, char * argv[])
 {
-  auto graph_file_name = "Twitter.el";
+  auto graph_file_name = "../Twitter.el";
   if (const auto env_p = std::getenv("INPUT_GRAPH")) {
     graph_file_name = env_p;
   }
