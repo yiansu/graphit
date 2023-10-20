@@ -394,7 +394,11 @@ void PRDelta_hbc(Graph &g, int n) {
 
 int main(int argc, char * argv[])
 {
-  edges = builtin_loadEdgesFromFile ( "Twitter.el" ) ;
+  auto graph_file_name = "Twitter.el";
+  if (const auto env_p = std::getenv("INPUT_GRAPH")) {
+    graph_file_name = env_p;
+  }
+  edges = builtin_loadEdgesFromFile ( graph_file_name ) ;
   cur_rank = new double [ builtin_getVertices(edges) ];
   ngh_sum = new double [ builtin_getVertices(edges) ];
   array_of_struct_delta_out_degree = new struct_delta_out_degree [ builtin_getVertices(edges) ];

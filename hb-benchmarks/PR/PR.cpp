@@ -292,7 +292,11 @@ void PR_hbc(Graph &g) {
 
 int main(int argc, char * argv[])
 {
-  edges = builtin_loadEdgesFromFile ( "Twitter.el" ) ;
+  auto graph_file_name = "Twitter.el";
+  if (const auto env_p = std::getenv("INPUT_GRAPH")) {
+    graph_file_name = env_p;
+  }
+  edges = builtin_loadEdgesFromFile ( graph_file_name ) ;
   old_rank = new double [ builtin_getVertices(edges) ];
   new_rank = new double [ builtin_getVertices(edges) ];
   out_degree = new int [ builtin_getVertices(edges) ];
