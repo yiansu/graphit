@@ -288,14 +288,18 @@ int main(int argc, char * argv[])
   if (const auto env_p = std::getenv("INPUT_GRAPH")) {
     graph_file_name = env_p;
   }
+  auto runs = 1;
+  if (const auto env_p = std::atol(std::getenv("RUNS"))) {
+    runs = env_p;
+  }
   edges = builtin_loadEdgesFromFile ( graph_file_name ) ;
   int start_vertex = atoi( "100" ) ;
   parent = new int [ builtin_getVertices(edges) ];
   ligra::parallel_for_lambda((int)0, (int)builtin_getVertices(edges) , [&] (int vertexsetapply_iter) {
     parent_generated_vector_op_apply_func_0()(vertexsetapply_iter);
   });;
-  // for ( int trail = (0) ; trail < (10) ; trail++ )
-  // {
+  for ( int trail = (0) ; trail < (runs) ; trail++ )
+  {
   //   startTimer() ;
 // ####################
 #if defined(USE_BASELINE) || defined(USE_FORKJOIN)
@@ -329,7 +333,7 @@ int main(int argc, char * argv[])
   //   float elapsed_time = stopTimer() ;
   //   std::cout << "elapsed time: "<< std::endl;
   //   std::cout << elapsed_time<< std::endl;
-  // }
+  }
 };
 #ifdef GEN_PYBIND_WRAPPERS
 PYBIND11_MODULE(, m) {

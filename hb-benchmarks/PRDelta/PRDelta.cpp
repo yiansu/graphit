@@ -398,6 +398,10 @@ int main(int argc, char * argv[])
   if (const auto env_p = std::getenv("INPUT_GRAPH")) {
     graph_file_name = env_p;
   }
+  auto runs = 1;
+  if (const auto env_p = std::atol(std::getenv("RUNS"))) {
+    runs = env_p;
+  }
   edges = builtin_loadEdgesFromFile ( graph_file_name ) ;
   cur_rank = new double [ builtin_getVertices(edges) ];
   ngh_sum = new double [ builtin_getVertices(edges) ];
@@ -420,8 +424,8 @@ int main(int argc, char * argv[])
     generated_vector_op_apply_func_4()(vertexsetapply_iter);
   });;
   int n = builtin_getVertices(edges) ;
-  // for ( int trail = (0) ; trail < (10) ; trail++ )
-  // {
+  for ( int trail = (0) ; trail < (runs) ; trail++ )
+  {
     // startTimer() ;
 // ####################
 #if defined(USE_BASELINE) || defined(USE_FORKJOIN)
@@ -455,7 +459,7 @@ int main(int argc, char * argv[])
     // double elapsed_time = stopTimer() ;
     // std::cout << "elapsed time: "<< std::endl;
     // std::cout << elapsed_time<< std::endl;
-  // }
+  }
 };
 #ifdef GEN_PYBIND_WRAPPERS
 PYBIND11_MODULE(, m) {
