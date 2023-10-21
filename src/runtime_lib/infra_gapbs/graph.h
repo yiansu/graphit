@@ -572,6 +572,14 @@ public:
       return in_neighbors_;
   }
 
+  uint64_t get_in_neighbors_begin_index_(NodeID_ n) {
+    return get_in_index_()[n] - get_in_neighbors_();
+  }
+
+  uint64_t get_in_neighbors_end_index_(NodeID_ n) {
+    return get_in_index_()[n+1] - get_in_neighbors_();
+  }
+
   // Atomically returns deduplication flag whenever a thread needs one.
   inline int* get_flags_atomic_() {
 

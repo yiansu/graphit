@@ -289,8 +289,10 @@ int main(int argc, char * argv[])
     graph_file_name = env_p;
   }
   auto runs = 1;
-  if (const auto env_p = std::atol(std::getenv("RUNS"))) {
-    runs = env_p;
+  if (const auto env_p = std::getenv("RUNS")) {
+    if (const auto env_p_p = std::atol(env_p)) {
+      runs = env_p_p;
+    }
   }
   edges = builtin_loadEdgesFromFile ( graph_file_name ) ;
   int start_vertex = atoi( "100" ) ;

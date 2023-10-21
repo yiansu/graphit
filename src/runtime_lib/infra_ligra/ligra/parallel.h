@@ -295,8 +295,8 @@ static void setWorkers(int n) { }
 
 #include <limits.h>
 
-#define LONG
-#if defined(LONG)
+#define GRAPHIT_LONG
+#if defined(GRAPHIT_LONG)
 typedef long intT;
 typedef unsigned long uintT;
 #define INT_T_MAX LONG_MAX
