@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # environment
-ROOT_DIR=`git rev-parse --show-toplevel`/hb-benchmarks
+ROOT_DIR=`git rev-parse --show-toplevel`
 source /nfs-scratch/yso0488/heartbeatcompiler0/enable ;
 source /project/extra/burnCPU/enable ;
 source common.sh ;
@@ -9,7 +9,7 @@ source common.sh ;
 # experiment
 experiment=scaling
 keyword=exectime
-mkdir -p ${ROOT_DIR}/evaluation/results/${experiment};
+mkdir -p ${ROOT_DIR}/hb-evaluation/results/${experiment};
 
 ########################################################
 # experiment sections
@@ -18,7 +18,6 @@ hbc_acc=false     # software polling + acc
 hbc_static=false  # software polling + static chunksize
 hbc_rf=false      # rollforward + interrupt ping thread
 hbc_rf_kmod=false # rollforward + kernel module
-forkjoin=false
 openmp=false
 
 # benchmark targetted
@@ -53,13 +52,6 @@ function run_and_collect {
       make run_openmp >> ${output} ;
     done
 
-  elif [ ${technique} == "forkjoin" ] ; then
-    for i in `seq 1 10` ; do
-      WORKERS=56 \
-      numactl --physcpubind=28-55 --interleave=all \
-      make run_forkjoin >> ${output} ;
-    done
-
   else
     for i in `seq 1 10` ; do
       WORKERS=28 \
@@ -83,7 +75,7 @@ cd ${ROOT_DIR} ;
 # run experiment per benchmark
 for benchmark in ${benchmarks[@]} ; do
 
-  results=${ROOT_DIR}/evaluation/results/${experiment}/${benchmark}
+  results=${ROOT_DIR}/hb-evaluation/results/${experiment}/${benchmark}
   mkdir -p ${results} ;
 
   cd ${benchmark} ;
@@ -105,12 +97,6 @@ for benchmark in ${benchmarks[@]} ; do
   if [ ${hbc_rf} = true ] ; then
     clean ; make hbc INPUT_SIZE=${input_size} ENABLE_ROLLFORWARD=true CHUNK_LOOP_ITERATIONS=false &> /dev/null ;
     run_and_collect hbc_rf ${results}/hbc_rf ;
-  fi
-
-  # forkjoin
-  if [ ${forkjoin} = true ] ; then
-    clean ; make forkjoin INPUT_SIZE=${input_size} &> /dev/null ;
-    run_and_collect forkjoin ${results}/forkjoin ;
   fi
 
   # openmp

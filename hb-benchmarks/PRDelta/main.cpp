@@ -228,15 +228,31 @@ void test_correctness() {
 #endif
 
 #if defined(USE_OPENMP)
+
+#include <omp.h>
+
 void PRDelta_openmp(Graph &g, int n) {
+#if defined(OMP_NESTED_PARALLELISM)
+  omp_set_max_active_levels(2);
+#endif
   VertexSubset<int> *  frontier = new VertexSubset<int> ( builtin_getVertices(edges)  , n);
-  #if defined(OMP_SCHEDULE_STATIC)
-    #pragma omp parallel for schedule(static)
-  #elif defined(OMP_SCHEDULE_DYNAMIC)
-    #pragma omp parallel for schedule(dynamic)
-  #elif defined(OMP_SCHEDULE_GUIDED)
-    #pragma omp parallel for schedule(guided)
-  #endif
+#if !defined(OMP_CHUNKSIZE)
+#if defined(OMP_SCHEDULE_STATIC)
+  #pragma omp parallel for schedule(static)
+#elif defined(OMP_SCHEDULE_DYNAMIC)
+  #pragma omp parallel for schedule(dynamic)
+#elif defined(OMP_SCHEDULE_GUIDED)
+  #pragma omp parallel for schedule(guided)
+#endif
+#else
+#if defined(OMP_SCHEDULE_STATIC)
+  #pragma omp parallel for schedule(static, OMP_CHUNKSIZE)
+#elif defined(OMP_SCHEDULE_DYNAMIC)
+  #pragma omp parallel for schedule(dynamic, OMP_CHUNKSIZE)
+#elif defined(OMP_SCHEDULE_GUIDED)
+  #pragma omp parallel for schedule(guided, OMP_CHUNKSIZE)
+#endif
+#endif
   for (uint64_t i = 0; i < builtin_getVertices(edges); i++) {
     reset()(i);
   }
@@ -244,14 +260,43 @@ void PRDelta_openmp(Graph &g, int n) {
   for ( int i = (1) ; i < (11) ; i++ )
   {
     frontier->toDense();
-    #if defined(OMP_SCHEDULE_STATIC)
-      #pragma omp parallel for schedule(static)
-    #elif defined(OMP_SCHEDULE_DYNAMIC)
-      #pragma omp parallel for schedule(dynamic)
-    #elif defined(OMP_SCHEDULE_GUIDED)
-      #pragma omp parallel for schedule(guided)
-    #endif
+#if !defined(OMP_CHUNKSIZE)
+#if defined(OMP_SCHEDULE_STATIC)
+    #pragma omp parallel for schedule(static)
+#elif defined(OMP_SCHEDULE_DYNAMIC)
+    #pragma omp parallel for schedule(dynamic)
+#elif defined(OMP_SCHEDULE_GUIDED)
+    #pragma omp parallel for schedule(guided)
+#endif
+#else
+#if defined(OMP_SCHEDULE_STATIC)
+    #pragma omp parallel for schedule(static, OMP_CHUNKSIZE)
+#elif defined(OMP_SCHEDULE_DYNAMIC)
+    #pragma omp parallel for schedule(dynamic, OMP_CHUNKSIZE)
+#elif defined(OMP_SCHEDULE_GUIDED)
+    #pragma omp parallel for schedule(guided, OMP_CHUNKSIZE)
+#endif
+#endif
     for (uint64_t d = 0; d < g.num_nodes(); d++) {
+#if defined(OMP_NESTED_PARALLELISM)
+#if !defined(OMP_CHUNKSIZE)
+#if defined(OMP_SCHEDULE_STATIC)
+      #pragma omp parallel for schedule(static)
+#elif defined(OMP_SCHEDULE_DYNAMIC)
+      #pragma omp parallel for schedule(dynamic)
+#elif defined(OMP_SCHEDULE_GUIDED)
+      #pragma omp parallel for schedule(guided)
+#endif
+#else
+#if defined(OMP_SCHEDULE_STATIC)
+      #pragma omp parallel for schedule(static, OMP_CHUNKSIZE)
+#elif defined(OMP_SCHEDULE_DYNAMIC)
+      #pragma omp parallel for schedule(dynamic, OMP_CHUNKSIZE)
+#elif defined(OMP_SCHEDULE_GUIDED)
+      #pragma omp parallel for schedule(guided, OMP_CHUNKSIZE)
+#endif
+#endif
+#endif
       for (uint64_t i = g.get_in_neighbors_begin_index_(d); i < g.get_in_neighbors_end_index_(d); i++) {
         if (frontier->bool_map_[g.get_in_neighbors_()[i]] ) { 
           updateEdge()( g.get_in_neighbors_()[i], d );
@@ -264,13 +309,23 @@ void PRDelta_openmp(Graph &g, int n) {
       { 
       output = new VertexSubset<NodeID>( builtin_getVertices(edges), 0);
       bool * next0 = newA(bool, builtin_getVertices(edges));
-      #if defined(OMP_SCHEDULE_STATIC)
-        #pragma omp parallel for schedule(static)
-      #elif defined(OMP_SCHEDULE_DYNAMIC)
-        #pragma omp parallel for schedule(dynamic)
-      #elif defined(OMP_SCHEDULE_GUIDED)
-        #pragma omp parallel for schedule(guided)
-      #endif
+#if !defined(OMP_CHUNKSIZE)
+#if defined(OMP_SCHEDULE_STATIC)
+      #pragma omp parallel for schedule(static)
+#elif defined(OMP_SCHEDULE_DYNAMIC)
+      #pragma omp parallel for schedule(dynamic)
+#elif defined(OMP_SCHEDULE_GUIDED)
+      #pragma omp parallel for schedule(guided)
+#endif
+#else
+#if defined(OMP_SCHEDULE_STATIC)
+      #pragma omp parallel for schedule(static, OMP_CHUNKSIZE)
+#elif defined(OMP_SCHEDULE_DYNAMIC)
+      #pragma omp parallel for schedule(dynamic, OMP_CHUNKSIZE)
+#elif defined(OMP_SCHEDULE_GUIDED)
+      #pragma omp parallel for schedule(guided, OMP_CHUNKSIZE)
+#endif
+#endif
       for (uint64_t v = 0; v < builtin_getVertices(edges); v++) {
         next0[v] = 0;
         if (updateVertexFirstRound()(v))
@@ -284,13 +339,23 @@ void PRDelta_openmp(Graph &g, int n) {
       { 
       output = new VertexSubset<NodeID>( builtin_getVertices(edges), 0);
       bool * next0 = newA(bool, builtin_getVertices(edges));
-      #if defined(OMP_SCHEDULE_STATIC)
-        #pragma omp parallel for schedule(static)
-      #elif defined(OMP_SCHEDULE_DYNAMIC)
-        #pragma omp parallel for schedule(dynamic)
-      #elif defined(OMP_SCHEDULE_GUIDED)
-        #pragma omp parallel for schedule(guided)
-      #endif
+#if !defined(OMP_CHUNKSIZE)
+#if defined(OMP_SCHEDULE_STATIC)
+      #pragma omp parallel for schedule(static)
+#elif defined(OMP_SCHEDULE_DYNAMIC)
+      #pragma omp parallel for schedule(dynamic)
+#elif defined(OMP_SCHEDULE_GUIDED)
+      #pragma omp parallel for schedule(guided)
+#endif
+#else
+#if defined(OMP_SCHEDULE_STATIC)
+      #pragma omp parallel for schedule(static, OMP_CHUNKSIZE)
+#elif defined(OMP_SCHEDULE_DYNAMIC)
+      #pragma omp parallel for schedule(dynamic, OMP_CHUNKSIZE)
+#elif defined(OMP_SCHEDULE_GUIDED)
+      #pragma omp parallel for schedule(guided, OMP_CHUNKSIZE)
+#endif
+#endif
       for(uint64_t v = 0; v < builtin_getVertices(edges); v++) {
         next0[v] = 0;
         if (updateVertex()(v))
@@ -394,7 +459,7 @@ void PRDelta_hbc(Graph &g, int n) {
 
 int main(int argc, char * argv[])
 {
-  auto graph_file_name = "../Twitter.el";
+  auto graph_file_name = "inputs/LiveJournal.el";
   if (const auto env_p = std::getenv("INPUT_GRAPH")) {
     graph_file_name = env_p;
   }
