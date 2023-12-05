@@ -315,7 +315,7 @@ void CC_hbc(Graph &g, int n) {
 
 int main(int argc, char * argv[])
 {
-  auto graph_file_name = "inputs/LiveJournal.el";
+  auto graph_file_name = "inputs/Twitter.el";
   if (const auto env_p = std::getenv("INPUT_GRAPH")) {
     graph_file_name = env_p;
   }
